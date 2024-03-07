@@ -1,0 +1,23 @@
+{
+  "name": "zeratulus/php-sql-injection-filter",
+  "description": "Simple SQL injection detection tool",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "keywords": ["sql injection filter", "sql filter", "sql injection detector"],
+  "homepage": "https://github.com/zeratulus/php-sql-injection-filter",
+  "type": "library",
+  "authors": [
+    {
+      "name": "Serhii Herenko",
+      "email": "ailus665@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^8"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ninja\\": "src/Ninja/"
+    }
+  }
+}
