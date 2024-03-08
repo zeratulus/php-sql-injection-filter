@@ -1,5 +1,7 @@
 # php-sql-injection-filter
 
+### Currently under development
+
 This solution was implemented to detect possible SQL injection at user input.
 
 In search of solution for this purpose I google some info... but there were nothing for PHP.
