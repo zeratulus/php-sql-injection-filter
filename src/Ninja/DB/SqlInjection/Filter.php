@@ -14,15 +14,20 @@ class Filter
 {
     private array $stringsToCheck = [
         "select", "drop", "from",
-        "exec", "exists", "update", "delete", "insert", "cast", "http",
-        "sql", "null", "like", "mysql", "()", "information_schema",
-        "sleep", "version", "join", "declare", "having", "signed", "alter",
-        "union", "where", "create", "shutdown", "grant", "privileges"
+        "exec", "exists", "update", "delete", "insert", "cast", "http", "https",
+        "sql", "null", "like", "mysql", "()", "information_schema", "timestamp",
+        "sleep", "version", "join", "declare", "having", "signed", "alter", "group",
+        "union", "where", "create", "shutdown", "grant", "privileges", "truncate",
+        "all", "any", "not", "and", "between", "in", "like", "or", "some", "contains",
+        "containsall", "containskey", "=", "<=", ">=", "let", "begin", "end", "if", "then", "is"
     ];
 
     private array $regExpsToCheck = [];
 
-    private array $issuesFound = [];
+    private array $issuesFound = [
+        'strings' => [],
+        'regexps' => []
+    ];
 
     /**
      * Method that checks on all possible regular expressions in string
@@ -34,7 +39,9 @@ class Filter
          */
         foreach ($this->regExpsToCheck as $regexp) {
             if (preg_match($regexp->getRegexp(), $value)) {
-                $this->issuesFound['regexps'][$regexp->getDescription()]++;
+                !isset($this->issuesFound['regexps'][$regexp->getDescription()]) ?
+                    $this->issuesFound['regexps'][$regexp->getDescription()] = 1 :
+                        $this->issuesFound['regexps'][$regexp->getDescription()]++;
             }
         }
     }
@@ -46,25 +53,28 @@ class Filter
     {
         foreach ($this->stringsToCheck as $string) {
             if (str_contains($value, $string)) {
-                $this->issuesFound['strings'][$string]++;
+                !isset($this->issuesFound['strings'][$string]) ?
+                    $this->issuesFound['strings'][$string] = 1 :
+                        $this->issuesFound['strings'][$string]++;
             }
         }
     }
 
     public function init(): Filter
     {
-        $this->regExpsToCheck[] = new RegExp("(/\\*).*(\\*/)", "Found /* and */");
-        $this->regExpsToCheck[] = new RegExp("(--.*)$", "-- at end of sql");
-        $this->regExpsToCheck[] = new RegExp(";+\"+\'", "One or more ; and at least one \" or '");
-        $this->regExpsToCheck[] = new RegExp("\"{2,}+", "Two or more \"");
-        $this->regExpsToCheck[] = new RegExp("\\d=\\d", "anydigit=anydigit");
-        $this->regExpsToCheck[] = new RegExp("(\\s\\s)+", "two or more white spaces in a row");
-        $this->regExpsToCheck[] = new RegExp("(#.*)$", "# at end of sql");
-        $this->regExpsToCheck[] = new RegExp("%{2,}+", "Two or more % signs");
-        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(admin.*))|((admin.*).*[;\'\"\\=]+)", "admin (and variations like administrator) and one of [; ' \" =] before or after admin");
-        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(root))|((root).*[;\'\"\\=]+)", "root and one of [; ' \" =] before or after root");
-        $this->regExpsToCheck[] = new RegExp("%+[0-7]+[0-9|A-F]+", "ASCII Hex");
-
+        $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */"); //PHP
+        $this->regExpsToCheck[] = new RegExp("(\-\-)", "-- sql comment");
+//TODO: fix all of regexps bellow
+//        $this->regExpsToCheck[] = new RegExp(";+\"+\'", "One or more ; and at least one \" or '");
+//        $this->regExpsToCheck[] = new RegExp("\"{2,}+", "Two or more \"");
+//        $this->regExpsToCheck[] = new RegExp("\\d=\\d", "anydigit=anydigit");
+//        $this->regExpsToCheck[] = new RegExp("(\\s\\s)+", "two or more white spaces in a row");
+//        $this->regExpsToCheck[] = new RegExp("(#.*)$", "# at end of sql");
+//        $this->regExpsToCheck[] = new RegExp("%{2,}+", "Two or more % signs");
+//        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(admin.*))|((admin.*).*[;\'\"\\=]+)", "admin (and variations like administrator) and one of [; ' \" =] before or after admin");
+//        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(root))|((root).*[;\'\"\\=]+)", "root and one of [; ' \" =] before or after root");
+//        $this->regExpsToCheck[] = new RegExp("%+[0-7]+[0-9|A-F]+", "ASCII Hex");
+//
         return $this;
     }
 
@@ -73,7 +83,7 @@ class Filter
         $strToCheck = strtolower($input);
 
         $this->checkRegExps($strToCheck);
-        $this->checkStrings($strToCheck);
+//        $this->checkStrings($strToCheck);
 
         return !empty($this->issuesFound);
     }
@@ -81,6 +91,14 @@ class Filter
     public function getIssues(): array
     {
         return $this->issuesFound;
+    }
+
+    public function clearIssues(): void
+    {
+        $this->issuesFound = [
+            'strings' => [],
+            'regexps' => []
+        ];
     }
 
 }
