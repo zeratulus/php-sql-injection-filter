@@ -19,7 +19,7 @@ class Filter
         "sleep", "version", "join", "declare", "having", "signed", "alter", "group",
         "union", "where", "create", "shutdown", "grant", "privileges", "truncate",
         "all", "any", "not", "and", "between", "in", "like", "or", "some", "contains",
-        "containsall", "containskey", "=", "<=", ">=", "let", "begin", "end", "if", "then", "is"
+        "containsall", "containskey", "=", "<=", ">=", "let", "begin", "end",
     ];
 
     private array $regExpsToCheck = [];
@@ -63,9 +63,10 @@ class Filter
     public function init(): Filter
     {
         $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */"); //PHP
-        $this->regExpsToCheck[] = new RegExp("(\-\-)", "-- sql comment");
+        $this->regExpsToCheck[] = new RegExp("/--.*$/mg", "-- sql comment");
 //TODO: fix all of regexps bellow
 //        $this->regExpsToCheck[] = new RegExp(";+\"+\'", "One or more ; and at least one \" or '");
+//        $this->regExpsToCheck[] = new RegExp('', "One or more ; and at least one \" or '");
 //        $this->regExpsToCheck[] = new RegExp("\"{2,}+", "Two or more \"");
 //        $this->regExpsToCheck[] = new RegExp("\\d=\\d", "anydigit=anydigit");
 //        $this->regExpsToCheck[] = new RegExp("(\\s\\s)+", "two or more white spaces in a row");
