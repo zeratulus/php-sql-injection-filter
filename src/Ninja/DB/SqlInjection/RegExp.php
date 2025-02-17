@@ -36,9 +36,13 @@ class RegExp
         return $this->regexp;
     }
 
-    public function setRegexp(string $regexp): void
-    {
-        $this->regexp = $regexp;
+  public function setRegexp(string $regexp): void
+  {
+    if (@preg_match("/$regexp/", null, $matches, PREG_NO_ERROR) === false) {
+      throw new \InvalidArgumentException("Invalid regular expression: " . preg_last_error_msg());
     }
+
+    $this->regexp = $regexp;
+  }
 
 }

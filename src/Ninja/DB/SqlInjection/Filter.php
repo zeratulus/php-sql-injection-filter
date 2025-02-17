@@ -13,13 +13,10 @@ namespace Ninja\DB\SqlInjection;
 class Filter
 {
     private array $stringsToCheck = [
-        "select", "drop", "from",
-        "exec", "exists", "update", "delete", "insert", "cast", "http", "https",
-        "sql", "null", "like", "mysql", "()", "information_schema", "timestamp",
-        "sleep", "version", "join", "declare", "having", "signed", "alter", "group",
-        "union", "where", "create", "shutdown", "grant", "privileges", "truncate",
-        "all", "any", "not", "and", "between", "in", "like", "or", "some", "contains",
-        "containsall", "containskey", "=", "<=", ">=", "let", "begin", "end",
+        "select", "drop", "from", "exec", "exists", "update", "delete", "insert", "cast", "http", "https", "sql",
+        "null", "like", "mysql", "()", "information_schema", "timestamp", "version", "join", "declare", "having",
+        "signed", "alter", "group", "union", "where", "create", "shutdown", "grant", "privileges", "truncate",
+        "between", "contains", "containsall", "containskey", "=", "<=", ">=",
     ];
 
     private array $regExpsToCheck = [];
@@ -62,20 +59,18 @@ class Filter
 
     public function init(): Filter
     {
-        $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */"); //PHP
-        $this->regExpsToCheck[] = new RegExp("/--.*$/mg", "-- sql comment");
-//TODO: fix all of regexps bellow
-//        $this->regExpsToCheck[] = new RegExp(";+\"+\'", "One or more ; and at least one \" or '");
-//        $this->regExpsToCheck[] = new RegExp('', "One or more ; and at least one \" or '");
-//        $this->regExpsToCheck[] = new RegExp("\"{2,}+", "Two or more \"");
-//        $this->regExpsToCheck[] = new RegExp("\\d=\\d", "anydigit=anydigit");
-//        $this->regExpsToCheck[] = new RegExp("(\\s\\s)+", "two or more white spaces in a row");
-//        $this->regExpsToCheck[] = new RegExp("(#.*)$", "# at end of sql");
-//        $this->regExpsToCheck[] = new RegExp("%{2,}+", "Two or more % signs");
-//        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(admin.*))|((admin.*).*[;\'\"\\=]+)", "admin (and variations like administrator) and one of [; ' \" =] before or after admin");
-//        $this->regExpsToCheck[] = new RegExp("([;\'\"\\=]+.*(root))|((root).*[;\'\"\\=]+)", "root and one of [; ' \" =] before or after root");
-//        $this->regExpsToCheck[] = new RegExp("%+[0-7]+[0-9|A-F]+", "ASCII Hex");
-//
+        $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */");
+        $this->regExpsToCheck[] = new RegExp("/--.*$/", "-- sql comment");
+        $this->regExpsToCheck[] = new RegExp("(;+|\"+|'+)", "One or more ; and at least one \" or '");
+        $this->regExpsToCheck[] = new RegExp('/"{2,}/', 'Two or more "');
+        $this->regExpsToCheck[] = new RegExp('/\d\s*[=><!]\s*\d/', "anydigit (=/>=/<=/!=/<>) anydigit");
+        $this->regExpsToCheck[] = new RegExp('/(\\s\\s)+/', "two or more white spaces in a row");
+        $this->regExpsToCheck[] = new RegExp("/(#.*)$/", "# at end of sql");
+        $this->regExpsToCheck[] = new RegExp('/%{2,}+/', "Two or more % signs");
+        $this->regExpsToCheck[] = new RegExp("/([;\'\"\\=]+.*(admin.*))|((admin.*).*[;\'\"\\=]+)/", "admin (and variations like administrator) and one of [; ' \" =] before or after admin");
+        $this->regExpsToCheck[] = new RegExp("/([;\'\"\\=]+.*(root))|((root).*[;\'\"\\=]+)/", "root and one of [; ' \" =] before or after root");
+        $this->regExpsToCheck[] = new RegExp("/%+[0-7]+[0-9|A-F]+/", "ASCII Hex");
+
         return $this;
     }
 
@@ -84,7 +79,7 @@ class Filter
         $strToCheck = strtolower($input);
 
         $this->checkRegExps($strToCheck);
-//        $this->checkStrings($strToCheck);
+        $this->checkStrings($strToCheck);
 
         return !empty($this->issuesFound);
     }
