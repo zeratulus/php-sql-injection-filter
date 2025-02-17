@@ -64,7 +64,7 @@ class Filter
         $this->regExpsToCheck[] = new RegExp("(;+|\"+|'+)", "One or more ; and at least one \" or '");
         $this->regExpsToCheck[] = new RegExp('/"{2,}/', 'Two or more "');
         $this->regExpsToCheck[] = new RegExp('/\d\s*[=><!]\s*\d/', "anydigit (=/>=/<=/!=/<>) anydigit");
-        $this->regExpsToCheck[] = new RegExp('/(\\s\\s)+/', "two or more white spaces in a row");
+//        $this->regExpsToCheck[] = new RegExp('/\s{2,}/u', "two or more white spaces in a row");
         $this->regExpsToCheck[] = new RegExp("/(#.*)$/", "# at end of sql");
         $this->regExpsToCheck[] = new RegExp('/%{2,}+/', "Two or more % signs");
         $this->regExpsToCheck[] = new RegExp("/([;\'\"\\=]+.*(admin.*))|((admin.*).*[;\'\"\\=]+)/", "admin (and variations like administrator) and one of [; ' \" =] before or after admin");

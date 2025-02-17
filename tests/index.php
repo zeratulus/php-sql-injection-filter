@@ -37,9 +37,11 @@ foreach ($files as $file) {
     consoleLog("Processing file: $file");
     while (($line = fgets($fileHandler)) !== false) {
         $data = prepareLine($line);
-        consoleLog("Line #$lineCounter " . $data[0] ? 'contain' : 'not contain' . " SQL injection." );
+        consoleLog("Line #$lineCounter " . ($data[0] ? 'contain' : 'not contain') . " SQL injection." );
         consoleLog(" - Analyzing: $data[1]");
-        if ($filter->check($data[1])) {
+        if ($filter->check($data[1]) &&
+            (!empty($filter->getIssues()['strings']) || !empty($filter->getIssues()['regexps']))
+        ) {
             consoleLog(" - Detected problems: ");
             echo print_r($filter->getIssues(), true);
         }
