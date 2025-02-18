@@ -261,7 +261,7 @@ class Filter
             }
 
             //Check
-            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec || $isNull && $keywordsTotal) {
+            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec || $isNull && $keywordsTotal >= 2) {
                 if ($isSelectFull) {
                     $this->messages[] = 'Contains SELECT FROM sequence!';
                 }
