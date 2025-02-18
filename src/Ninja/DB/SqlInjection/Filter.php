@@ -20,11 +20,11 @@ class Filter
     private array $messages = [];
 
     private array $sqlBoolOperators = [
-        "=", "<=", ">=", "<>", "!=", "or", "and"
+        "=", "<=", ">=", "<>", "!=", "or", "and", "not", "if", "else"
     ];
 
     private array $sqlWhereOperators = [
-        "like", "where", "between", "group", "not", "null", "if", "else"
+        "like", "where", "between", "group", "null", "%"
     ];
 
     private array $sqlCommands = [
@@ -35,7 +35,7 @@ class Filter
         "select", "drop", "from",  "exists", "update", "delete", "insert",  "http", "https", "sql",
         "mysql", "()", "information_schema", "timestamp", "version", "join", "having", "__TIME__",
         "signed", "alter", "union", "create", "shutdown", "some", "all", "any",
-        "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep", "%"
+        "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep"
     ];
 
     private array $unwantedStrings = [
@@ -309,13 +309,24 @@ class Filter
                 }
             }
 
-            if ($sqlWhereOperators || $sqlBoolOperators > 1 && $keywordsTotal > 4) {
+            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 5 && $this->isContainStrDelimeters()) {
                 $this->messages[] = 'Contains part of WHERE clause or bool logic!';
                 $result = true;
             }
         }
 
         return $result;
+    }
+
+    private function isContainStrDelimeters(): bool
+    {
+        $delimeters = ['"', "'"];
+        foreach ($delimeters as $delimeter) {
+            if (str_contains($this->input, $delimeter)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -325,6 +336,5 @@ class Filter
     {
         return $this->messages;
     }
-
 
 }
