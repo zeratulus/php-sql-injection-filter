@@ -10,10 +10,13 @@
 
 namespace Ninja\DB\SqlInjection;
 
+use PhpMyAdmin\SqlParser\Lexer;
 use PhpMyAdmin\SqlParser\Parser;
+use PhpMyAdmin\SqlParser\TokensList;
 
 class Filter
 {
+    private string $input = "";
     private array $messages = [];
 
     private array $sqlBoolOperators = [
@@ -21,7 +24,7 @@ class Filter
     ];
 
     private array $sqlWhereOperators = [
-        "like", "where", "between", "group", "some", "all", "any", "not", "null", "%", "if", "else"
+        "like", "where", "between", "group", "not", "null", "if", "else"
     ];
 
     private array $sqlCommands = [
@@ -31,8 +34,12 @@ class Filter
     private array $sqlOtherStrings = [
         "select", "drop", "from",  "exists", "update", "delete", "insert",  "http", "https", "sql",
         "mysql", "()", "information_schema", "timestamp", "version", "join", "having", "__TIME__",
-        "signed", "alter", "union", "create", "shutdown",
-        "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep", "username", "admin",
+        "signed", "alter", "union", "create", "shutdown", "some", "all", "any",
+        "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep", "%"
+    ];
+
+    private array $unwantedStrings = [
+        "username", "admin",
     ];
 
     private array $stringsToCheck = [
@@ -92,9 +99,15 @@ class Filter
         }
     }
 
+    private function getLexems(): TokensList
+    {
+        $lexer = new Lexer($this->input);
+        return $lexer->list;
+    }
+
     public function init(): Filter
     {
-        $this->stringsToCheck = array_merge($this->sqlBoolOperators, $this->sqlWhereOperators, $this->sqlCommands, $this->sqlOtherStrings);
+        $this->stringsToCheck = array_merge($this->sqlBoolOperators, $this->sqlWhereOperators, $this->sqlCommands, $this->sqlOtherStrings, $this->unwantedStrings);
 
         $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */ injection");
         $this->regExpsToCheck[] = new RegExp("/--.*$/", "-- sql comment injection");
@@ -172,6 +185,7 @@ class Filter
 
     public function check(string $input): bool
     {
+        $this->input = $input;
         $strLower = strtolower($input);
 
         $this->checkStrings($strLower);
@@ -196,6 +210,8 @@ class Filter
         ];
 
         $this->messages = [];
+
+        $this->input = "";
     }
 
     public function isIssues(): bool
@@ -203,7 +219,6 @@ class Filter
         return !empty($this->issuesFound['errors']) || !empty($this->issuesFound['strings']) || !empty($this->issuesFound['regexps']);
     }
 
-    //TODO: More correct algo to check
     public function isSqlInjection(): bool
     {
         $result = false;
@@ -227,6 +242,7 @@ class Filter
 
         if (!empty($this->issuesFound['strings'])) {
             $strings = array_keys($this->issuesFound['strings']);
+
             $isNull = in_array('null', $strings);
             $isSelectFull = (in_array('select', $strings) && in_array('from', $strings));
             $isUpdateFull = (in_array('update', $strings) && in_array('set', $strings));
@@ -237,8 +253,15 @@ class Filter
                 (in_array('inner', $strings) || in_array('outer', $strings) || in_array('left', $strings) || in_array('right', $strings))
             );
 
+            $keywordsTotal = 0;
+            foreach ($this->getLexems()->tokens as $token) {
+                if (!empty($token->keyword)) {
+                    $keywordsTotal++;
+                }
+            }
+
             //Check
-            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec || $isNull) {
+            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec || $isNull && $keywordsTotal) {
                 if ($isSelectFull) {
                     $this->messages[] = 'Contains SELECT FROM sequence!';
                 }
@@ -275,18 +298,18 @@ class Filter
             $sqlWhereOperators = 0;
 
             foreach ($this->sqlBoolOperators as $value) {
-                if (in_array($value, $this->issuesFound['strings'])) {
+                if (in_array($value, array_keys($this->issuesFound['strings']))) {
                     $sqlBoolOperators++;
                 }
             }
 
             foreach ($this->sqlWhereOperators as $value) {
-                if (in_array($value, $this->issuesFound['strings'])) {
+                if (in_array($value, array_keys($this->issuesFound['strings']))) {
                     $sqlWhereOperators++;
                 }
             }
 
-            if ($sqlWhereOperators && $sqlBoolOperators) {
+            if ($sqlWhereOperators || $sqlBoolOperators > 1 && $keywordsTotal > 4) {
                 $this->messages[] = 'Contains part of WHERE clause or bool logic!';
                 $result = true;
             }

@@ -4,6 +4,8 @@ use Ninja\DB\SqlInjection\Filter as SqlInjectionFilter;
 
 require_once '../vendor/autoload.php';
 
+ini_set('display_errors', 1);
+
 function consoleLog(string $msg): void
 {
     echo date('Y-m-d H:i:s') . " -> $msg \r\n";
