@@ -30,6 +30,8 @@ $filter = new SqlInjectionFilter();
 $filter->init();
 
 $files = glob("$currentDir/dataset/*.txt");
+$totalStringsContainInjection = 0;
+$totalFoundedInjections = 0;
 foreach ($files as $file) {
     $lineCounter = 0;
 
@@ -37,16 +39,31 @@ foreach ($files as $file) {
     consoleLog("Processing file: $file");
     while (($line = fgets($fileHandler)) !== false) {
         $data = prepareLine($line);
-        consoleLog("Line #$lineCounter " . ($data[0] ? 'contain' : 'not contain') . " SQL injection." );
+        consoleLog("Line #$lineCounter " . ($data[0] ? 'contains' : 'not contains') . " SQL injection." );
+        if ($data[0]) {
+            $totalStringsContainInjection++;
+        }
         consoleLog(" - Analyzing: $data[1]");
-        if ($filter->check($data[1]) &&
-            (!empty($filter->getIssues()['strings']) || !empty($filter->getIssues()['regexps']))
-        ) {
+        if ($filter->check($data[1]) && $filter->isIssues()) {
             consoleLog(" - Detected problems: ");
             echo print_r($filter->getIssues(), true);
+        }
+        echo $filter->isSqlInjection() ? "isSqlInjection: TRUE\r" : "isSqlInjection: FALSE\r";
+        if (!empty($filter->getMessages())) {
+            echo "Reason: \r";
+        }
+        foreach ($filter->getMessages() as $message) {
+            echo " - {$message}\r";
+        }
+        if ($filter->isSqlInjection()) {
+            $totalFoundedInjections++;
         }
         $filter->clearIssues();
         $lineCounter++;
     }
     fclose($fileHandler);
 }
+
+echo "\r\rTotals: \r";
+echo "totalStringsContainInjection: $totalStringsContainInjection \r";
+echo "totalFoundedInjections: $totalFoundedInjections \r";
