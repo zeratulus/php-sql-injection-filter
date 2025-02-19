@@ -31,9 +31,12 @@ $currentDir = __DIR__;
 $filter = new SqlInjectionFilter();
 $filter->init();
 
+$startTime = microtime(true);
+
 $files = glob("$currentDir/dataset/*.txt");
 $totalStringsContainInjection = 0;
 $totalFoundedInjections = 0;
+$totalLines = 0;
 foreach ($files as $file) {
     $lineCounter = 0;
 
@@ -62,10 +65,12 @@ foreach ($files as $file) {
         }
         $filter->clearIssues();
         $lineCounter++;
+        $totalLines++;
     }
     fclose($fileHandler);
 }
 
-echo "\r\rTotals: \r";
+echo "\rChecked for: " . $finishTime = microtime(true) - $startTime . " seconds\r";
+echo "Total Lines: $totalLines\r";
 echo "totalStringsContainInjection: $totalStringsContainInjection \r";
 echo "totalFoundedInjections: $totalFoundedInjections \r";

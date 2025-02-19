@@ -31,8 +31,12 @@ class Filter
         "cast", "exec", "declare", "execute", "truncate", "grant", "privileges", "concat"
     ];
 
+    private array $sqlComments = [
+        "--", "/*", "*/",
+    ];
+
     private array $sqlOtherStrings = [
-        "select", "drop", "from",  "exists", "update", "delete", "insert",  "http", "https", "sql",
+        "select", "drop", "from", "exists", "update", "delete", "insert", "http", "https", "sql",
         "mysql", "()", "information_schema", "timestamp", "version", "join", "having", "__TIME__",
         "signed", "alter", "union", "create", "shutdown", "some", "all", "any",
         "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep"
@@ -42,9 +46,7 @@ class Filter
         "username", "admin",
     ];
 
-    private array $stringsToCheck = [
-
-    ];
+    private array $stringsToCheck = [];
 
     private array $regExpsToCheck = [];
 
@@ -54,6 +56,10 @@ class Filter
         'errors' => [],
         'isValidSql' => false,
     ];
+
+    private bool $isSqlInjection = false;
+    private bool $checkRegexps = true;
+    private bool $checkValidSql = true;
 
     /**
      * Method that checks on all possible regular expressions in string
@@ -67,13 +73,13 @@ class Filter
             if (preg_match($regexp->getRegexp(), $value)) {
                 !isset($this->issuesFound['regexps'][$regexp->getDescription()]) ?
                     $this->issuesFound['regexps'][$regexp->getDescription()] = 1 :
-                        $this->issuesFound['regexps'][$regexp->getDescription()]++;
+                    $this->issuesFound['regexps'][$regexp->getDescription()]++;
             }
         }
     }
 
     /**
-     * Method that checks on all possible SQL commands in search string
+     * Method that checks on all possible words according to vocabulary in search string
      */
     private function checkStrings(string $value): void
     {
@@ -81,7 +87,7 @@ class Filter
             if (str_contains($value, $string)) {
                 !isset($this->issuesFound['strings'][$string]) ?
                     $this->issuesFound['strings'][$string] = 1 :
-                        $this->issuesFound['strings'][$string]++;
+                    $this->issuesFound['strings'][$string]++;
             }
         }
     }
@@ -105,9 +111,15 @@ class Filter
         return $lexer->list;
     }
 
+    public function __construct(bool $checkRegexps = true, bool $checkValidSql = true)
+    {
+        $this->checkRegexps = $checkRegexps;
+        $this->checkValidSql = $checkValidSql;
+    }
+
     public function init(): Filter
     {
-        $this->stringsToCheck = array_merge($this->sqlBoolOperators, $this->sqlWhereOperators, $this->sqlCommands, $this->sqlOtherStrings, $this->unwantedStrings);
+        $this->stringsToCheck = array_merge($this->sqlBoolOperators, $this->sqlWhereOperators, $this->sqlCommands, $this->sqlOtherStrings, $this->unwantedStrings, $this->sqlComments);
 
         $this->regExpsToCheck[] = new RegExp("/(?<!\/)\/\*((?:(?!\*\/).|\s)*)\*\//", "Found /* and */ injection");
         $this->regExpsToCheck[] = new RegExp("/--.*$/", "-- sql comment injection");
@@ -189,12 +201,15 @@ class Filter
         $strLower = strtolower($input);
 
         $this->checkStrings($strLower);
-        $this->checkRegExps($input);
-        if (!empty($this->issuesFound['strings'])) {
+        if ($this->checkRegexps) {
+            $this->checkRegExps($input);
+        }
+
+        if (!empty($this->issuesFound['strings']) && $this->checkValidSql) {
             $this->checkWithParser($input);
         }
 
-        return !empty($this->issuesFound);
+        return $this->isSqlInjection = $this->checkSqlInjection();
     }
 
     public function getIssues(): array
@@ -206,12 +221,16 @@ class Filter
     {
         $this->issuesFound = [
             'strings' => [],
-            'regexps' => []
+            'regexps' => [],
+            'errors' => [],
+            'isValidSql' => false,
         ];
 
         $this->messages = [];
 
         $this->input = "";
+
+        $this->isSqlInjection = false;
     }
 
     public function isIssues(): bool
@@ -219,7 +238,7 @@ class Filter
         return !empty($this->issuesFound['errors']) || !empty($this->issuesFound['strings']) || !empty($this->issuesFound['regexps']);
     }
 
-    public function isSqlInjection(): bool
+    public function checkSqlInjection(): bool
     {
         $result = false;
 
@@ -257,6 +276,13 @@ class Filter
             foreach ($this->getLexems()->tokens as $token) {
                 if (!empty($token->keyword)) {
                     $keywordsTotal++;
+                }
+            }
+
+            foreach ($this->sqlComments as $sqlComment) {
+                if (in_array($sqlComment, $strings)) {
+                    $this->messages[] = "Contains $sqlComment SQL Comment!";
+                    $result = true;
                 }
             }
 
@@ -309,7 +335,12 @@ class Filter
                 }
             }
 
-            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 5 && $this->isContainStrDelimeters()) {
+            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 8) {
+                $this->messages[] = 'Contains part of WHERE clause or bool logic!';
+                $result = true;
+            }
+
+            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 5 && $this->isContainStrDelimiter()) {
                 $this->messages[] = 'Contains part of WHERE clause or bool logic!';
                 $result = true;
             }
@@ -318,23 +349,25 @@ class Filter
         return $result;
     }
 
-    private function isContainStrDelimeters(): bool
+    private function isContainStrDelimiter(): bool
     {
-        $delimeters = ['"', "'"];
-        foreach ($delimeters as $delimeter) {
-            if (str_contains($this->input, $delimeter)) {
+        $delimiters = ['"', "'"];
+        foreach ($delimiters as $delimiter) {
+            if (str_contains($this->input, $delimiter)) {
                 return true;
             }
         }
         return false;
     }
 
-    /**
-     * @return array
-     */
     public function getMessages(): array
     {
         return $this->messages;
+    }
+
+    public function isSqlInjection(): bool
+    {
+        return $this->isSqlInjection;
     }
 
 }
