@@ -1,6 +1,7 @@
 {
   "name": "zeratulus/php-sql-injection-filter",
   "description": "Simple SQL injection detection tool",
+  "version": "1.0",
   "minimum-stability": "stable",
   "license": "MIT",
   "keywords": ["sql injection filter", "sql filter", "sql injection detector"],
