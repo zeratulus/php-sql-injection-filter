@@ -2,6 +2,9 @@
 
 ### Currently under development
 
+## Installation
+>composer require zeratulus/php-sql-injection-filter
+
 Usage example:
 ```php 
 $result = (new Ninja\DB\SqlInjection())->init()->check($myStringToCheck);
