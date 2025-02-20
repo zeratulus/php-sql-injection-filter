@@ -34,8 +34,10 @@ $filter->init();
 $startTime = microtime(true);
 
 $files = glob("$currentDir/dataset/*.txt");
+$totalStringsWithoutInjection = 0;
 $totalStringsContainInjection = 0;
 $totalFoundedInjections = 0;
+$totalMistakes = 0;
 $totalLines = 0;
 foreach ($files as $file) {
     $lineCounter = 0;
@@ -47,21 +49,27 @@ foreach ($files as $file) {
         consoleLog("Line #$lineCounter " . ($data[0] ? 'contains' : 'not contains') . " SQL injection." );
         if ($data[0]) {
             $totalStringsContainInjection++;
+        } else {
+            $totalStringsWithoutInjection++;
         }
         consoleLog(" - Analyzing: $data[1]");
         if ($filter->check($data[1]) && $filter->isIssues()) {
             consoleLog(" - Detected problems: ");
             echo print_r($filter->getIssues(), true);
         }
-        echo $filter->isSqlInjection() ? "isSqlInjection: TRUE\r" : "isSqlInjection: FALSE\r";
+        echo  " -> isSqlInjection: " . ($filter->isSqlInjection() ? "TRUE\r" : "FALSE\r");
         if (!empty($filter->getMessages())) {
             echo "Reason: \r";
-        }
-        foreach ($filter->getMessages() as $message) {
-            echo " - {$message}\r";
+            foreach ($filter->getMessages() as $message) {
+                echo " - {$message}\r";
+            }
         }
         if ($filter->isSqlInjection()) {
             $totalFoundedInjections++;
+            if (!$data[0]) {
+                $totalMistakes++;
+                echo " - Mistake SQL Injection detection.\r";
+            }
         }
         $filter->clearIssues();
         $lineCounter++;
@@ -72,5 +80,7 @@ foreach ($files as $file) {
 
 echo "\rChecked for: " . $finishTime = microtime(true) - $startTime . " seconds\r";
 echo "Total Lines: $totalLines\r";
+echo "totalStringsWithoutInjection: $totalStringsWithoutInjection \r";
 echo "totalStringsContainInjection: $totalStringsContainInjection \r";
 echo "totalFoundedInjections: $totalFoundedInjections \r";
+echo "totalMistakes: $totalMistakes \r";

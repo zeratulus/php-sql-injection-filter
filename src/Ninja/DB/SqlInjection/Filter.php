@@ -10,6 +10,7 @@
 
 namespace Ninja\DB\SqlInjection;
 
+use Exception;
 use PhpMyAdmin\SqlParser\Lexer;
 use PhpMyAdmin\SqlParser\Parser;
 use PhpMyAdmin\SqlParser\TokensList;
@@ -17,6 +18,7 @@ use PhpMyAdmin\SqlParser\TokensList;
 class Filter
 {
     private string $input = "";
+    private string $inputLower = "";
     private array $messages = [];
 
     private array $sqlBoolOperators = [
@@ -28,7 +30,7 @@ class Filter
     ];
 
     private array $sqlCommands = [
-        "cast", "exec", "declare", "execute", "truncate", "grant", "privileges", "concat"
+        "cast", "exec", "declare", "execute", "truncate", "grant", "privileges", "concat", "drop", "case", "char"
     ];
 
     private array $sqlComments = [
@@ -36,7 +38,7 @@ class Filter
     ];
 
     private array $sqlOtherStrings = [
-        "select", "drop", "from", "exists", "update", "delete", "insert", "http", "https", "sql",
+        "select", "from", "exists", "update", "delete", "insert", "http", "https", "sql",
         "mysql", "()", "information_schema", "timestamp", "version", "join", "having", "__TIME__",
         "signed", "alter", "union", "create", "shutdown", "some", "all", "any",
         "contains", "containsall", "containskey", "inner", "outer", "left", "right", "sleep"
@@ -94,13 +96,24 @@ class Filter
 
     private function checkWithParser(string $sql): void
     {
-        $parser = new Parser($sql);
-        if (empty($parser->errors)) {
-            $this->issuesFound['isValidSql'] = true;
-        } else {
-            foreach ($parser->errors as $error) {
-                $this->issuesFound['errors'][] = $error->getMessage();
+        if ($this->checkWordsForParser()) {
+            $parserException = false;
+
+            try {
+                $parser = new Parser($sql);
+            } catch (Exception $e) {
+                $parserException = true;
             }
+
+            if (empty($parser->errors) && !$parserException) {
+                $this->issuesFound['isValidSql'] = true;
+            } else {
+                foreach ($parser->errors as $error) {
+                    $this->issuesFound['errors'][] = $error->getMessage();
+                }
+                $this->issuesFound['isValidSql'] = false;
+            }
+        } else {
             $this->issuesFound['isValidSql'] = false;
         }
     }
@@ -198,14 +211,19 @@ class Filter
     public function check(string $input): bool
     {
         $this->input = $input;
-        $strLower = strtolower($input);
+        $this->inputLower = strtolower($input);
 
-        $this->checkStrings($strLower);
+        $encoding = mb_detect_encoding($this->input);
+        if (!empty($encoding) && strtoupper($encoding) != 'UTF-8') {
+            $this->input = mb_convert_encoding($this->input, 'UTF-8', $encoding);
+        }
+
+        $this->checkStrings($this->inputLower);
         if ($this->checkRegexps) {
             $this->checkRegExps($input);
         }
 
-        if (!empty($this->issuesFound['strings']) && $this->checkValidSql) {
+        if (!empty($this->issuesFound['strings']) && count($this->issuesFound['strings']) >= 1 && $this->checkValidSql) {
             $this->checkWithParser($input);
         }
 
@@ -242,6 +260,9 @@ class Filter
     {
         $result = false;
 
+        $strings = array_keys($this->issuesFound['strings']);
+        $wordsCount = count($strings);
+
         //Check
         if (!empty($this->issuesFound['isValidSql'])) {
             $this->messages[] = 'Valid SQL query.';
@@ -252,18 +273,19 @@ class Filter
         if (!empty($this->issuesFound['regexps'])) {
             $validationMessages = array_keys($this->issuesFound['regexps']);
             foreach ($validationMessages as $message) {
-                if (str_contains(strtolower($message), 'injection')) {
+                if (str_contains(strtolower($message), 'injection') && $wordsCount >= 1) {
                     $this->messages[] = $message;
                     $result = true;
                 }
             }
         }
 
-        if (!empty($this->issuesFound['strings'])) {
-            $strings = array_keys($this->issuesFound['strings']);
+//      $isBrokenEncoding = str_contains($this->input, "�");
 
-            $isNull = in_array('null', $strings);
+        if (!empty($this->issuesFound['strings'])) {
+            $isNull = in_array('null', $strings) && $wordsCount > 2;
             $isSelectFull = (in_array('select', $strings) && in_array('from', $strings));
+            $isUnionSelect = (in_array('select', $strings) && in_array('union', $strings));
             $isUpdateFull = (in_array('update', $strings) && in_array('set', $strings));
             $isInsertFull = (in_array('insert', $strings) && in_array('into', $strings));
             $isDeleteFull = (in_array('delete', $strings) && in_array('from', $strings));
@@ -280,14 +302,58 @@ class Filter
             }
 
             foreach ($this->sqlComments as $sqlComment) {
-                if (in_array($sqlComment, $strings)) {
+                if (in_array($sqlComment, $strings) && $wordsCount > 1) {
                     $this->messages[] = "Contains $sqlComment SQL Comment!";
                     $result = true;
                 }
             }
 
+            if ($isNull && $wordsCount > 1) {
+                $this->messages[] = 'Contains NULL!';
+            }
+
+//            if ($isBrokenEncoding) {
+//                $this->messages[] = 'Contains Broken Encoding "�"!';
+//                $result = true;
+//            }
+
+            //Check for commands
+            if ($wordsCount > 1) {
+                if ($isUnionSelect) {
+                    $this->messages[] = 'Contains UNION SELECT!';
+                    $result = true;
+                }
+
+                foreach ($this->sqlCommands as $sqlCommand) {
+                    if (in_array($sqlCommand, $strings)) {
+                        if (in_array('select', $strings)) {
+                            $this->messages[] = "Contains SELECT + " . strtoupper($sqlCommand) . " sequence!";
+                        } else {
+                            $this->messages[] = "Contains SQL critical command " . strtoupper($sqlCommand) . "!";
+                        }
+                        $result = true;
+                    }
+                }
+            }
+
             //Check
-            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec || $isNull && $keywordsTotal >= 2) {
+            $sqlBoolOperators = 0;
+            $sqlWhereOperators = 0;
+
+            foreach ($this->sqlBoolOperators as $value) {
+                if (in_array($value, array_keys($this->issuesFound['strings']))) {
+                    $sqlBoolOperators++;
+                }
+            }
+
+            foreach ($this->sqlWhereOperators as $value) {
+                if (in_array($value, array_keys($this->issuesFound['strings']))) {
+                    $sqlWhereOperators++;
+                }
+            }
+
+            //Check
+            if ($isSelectFull || $isUpdateFull || $isInsertFull || $isDeleteFull || $isJoinFull || $isExec && $keywordsTotal >= 2) {
                 if ($isSelectFull) {
                     $this->messages[] = 'Contains SELECT FROM sequence!';
                 }
@@ -312,37 +378,30 @@ class Filter
                     $this->messages[] = 'Contains EXEC!';
                 }
 
-                if ($isNull) {
-                    $this->messages[] = 'Contains NULL!';
-                }
-
                 $result = true;
-            }
-
-            //Check
-            $sqlBoolOperators = 0;
-            $sqlWhereOperators = 0;
-
-            foreach ($this->sqlBoolOperators as $value) {
-                if (in_array($value, array_keys($this->issuesFound['strings']))) {
-                    $sqlBoolOperators++;
-                }
-            }
-
-            foreach ($this->sqlWhereOperators as $value) {
-                if (in_array($value, array_keys($this->issuesFound['strings']))) {
-                    $sqlWhereOperators++;
-                }
             }
 
             if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 8) {
-                $this->messages[] = 'Contains part of WHERE clause or bool logic!';
+                $this->messages[] = '#00 Contains part of WHERE clause or bool logic!';
                 $result = true;
             }
 
-            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal > 5 && $this->isContainStrDelimiter()) {
-                $this->messages[] = 'Contains part of WHERE clause or bool logic!';
+            if ($sqlWhereOperators > 1 || $sqlBoolOperators >= 2 && $keywordsTotal >= 2 && $this->isContainStrDelimiter()) {
+                $this->messages[] = '#01 Contains part of WHERE clause or bool logic!';
                 $result = true;
+            }
+
+            if ($sqlBoolOperators >= 2 && $keywordsTotal >= 3 && $this->isContainStrDelimiter()) {
+                $this->messages[] = '#02 Contains part of WHERE clause or bool logic!';
+                $result = true;
+            }
+
+            if ($sqlBoolOperators > 1 && $this->isContainStrDelimiter() && in_array('=', $strings)) {
+                $this->messages[] = 'Contains = logic with strings!';
+            }
+
+            if ($sqlBoolOperators > 1 && in_array('=', $strings)) {
+                $this->messages[] = 'Contains = logic with something!';
             }
         }
 
@@ -368,6 +427,22 @@ class Filter
     public function isSqlInjection(): bool
     {
         return $this->isSqlInjection;
+    }
+
+    public function checkWordsForParser(): bool
+    {
+        $result = false;
+        $checks = [];
+        foreach ($this->issuesFound['strings'] as $string) {
+            $word = "$string ";
+            if (str_contains($this->input, $word)) {
+                $checks[] = $string;
+            }
+        }
+        if (!empty($checks)) {
+            $result = true;
+        }
+        return $result;
     }
 
 }
