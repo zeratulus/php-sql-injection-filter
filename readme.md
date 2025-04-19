@@ -31,4 +31,6 @@ In search of solution for this purpose I google some info... but there were noth
 Big thanks to Stuart Millar for Java implementation.
 Basic code were taken from here: https://github.com/stu17682/sql-injection-filter
 
+Implemented with ChatGPT and Gemini.
+
 With best regards Serhii Herenko
